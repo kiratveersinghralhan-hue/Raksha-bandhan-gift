@@ -1,0 +1,132 @@
+{
+  "personalization": {
+    "sisterName": "Harsamreet",
+    "sisterNickname": "Motti",
+    "brotherName": "Kiratveer Singh Ralhan"
+  },
+  "backgroundMusic": "media/music/background.mp3",
+  "memories": [
+    {
+      "id": 1,
+      "image": "media/memories/memory-01-cafe.webp",
+      "title": "Cafe diplomacy",
+      "caption": "That look says you had already decided you were right."
+    },
+    {
+      "id": 2,
+      "image": "media/memories/memory-02-family-night.webp",
+      "title": "Home, in one frame",
+      "caption": "Some pictures don’t need a perfect pose. They already feel like home."
+    },
+    {
+      "id": 3,
+      "image": "media/memories/memory-03-attitude-archive.webp",
+      "title": "Attitude: archived",
+      "caption": "Proof that the Motti attitude has been in development for years."
+    },
+    {
+      "id": 4,
+      "image": "media/memories/memory-04-childhood-family.webp",
+      "title": "Where it all began",
+      "caption": "Before the flights, the distance and Canada — there was this."
+    },
+    {
+      "id": 5,
+      "image": "media/memories/memory-05-canada-street.webp",
+      "title": "New streets, same home",
+      "caption": "A different country changed the background, not the bond."
+    },
+    {
+      "id": 6,
+      "image": "media/memories/memory-06-three-of-us.webp",
+      "title": "The three of us",
+      "caption": "No fancy caption needed. This one already says enough."
+    },
+    {
+      "id": 7,
+      "image": "media/memories/memory-07-roadside-family.webp",
+      "title": "Miles from home",
+      "caption": "Somewhere between ordinary roads and ordinary days, these become the memories you miss most."
+    },
+    {
+      "id": 8,
+      "image": "media/memories/memory-08-main-character.webp",
+      "title": "Main character energy",
+      "caption": "Motti casually arriving like the entire event was scheduled around her."
+    },
+    {
+      "id": 9,
+      "image": "media/memories/memory-09-sibling-hug.webp",
+      "title": "Still my sister first",
+      "caption": "Annoying privileges included. Non-transferable. Lifetime membership."
+    },
+    {
+      "id": 10,
+      "image": "media/memories/memory-10-main-character-take2.webp",
+      "title": "Main character, take two",
+      "caption": "Because apparently one dramatic car photo was not enough."
+    },
+    {
+      "id": 11,
+      "image": "media/memories/memory-11-evidence-a.webp",
+      "title": "Exhibit M",
+      "caption": "This is why I can never take you completely seriously."
+    },
+    {
+      "id": 12,
+      "image": "media/memories/memory-12-chaos-preserved.webp",
+      "title": "Family chaos, preserved",
+      "caption": "Very elegant. Very sophisticated. Absolutely no evidence to the contrary."
+    },
+    {
+      "id": 13,
+      "image": "media/memories/memory-13-deep-thoughts.webp",
+      "title": "Deep thoughts by Motti",
+      "caption": "A historic photograph of absolutely no useful thought taking place."
+    }
+  ],
+  "filmClips": [
+    {
+      "id": 1,
+      "src": "media/film-clips/film-01.mp4",
+      "poster": "media/film-posters/film-01.webp",
+      "label": "Memory film 1 of 6"
+    },
+    {
+      "id": 2,
+      "src": "media/film-clips/film-02.mp4",
+      "poster": "media/film-posters/film-02.webp",
+      "label": "Memory film 2 of 6"
+    },
+    {
+      "id": 3,
+      "src": "media/film-clips/film-03.mp4",
+      "poster": "media/film-posters/film-03.webp",
+      "label": "Memory film 3 of 6"
+    },
+    {
+      "id": 4,
+      "src": "media/film-clips/film-04.mp4",
+      "poster": "media/film-posters/film-04.webp",
+      "label": "Memory film 4 of 6"
+    },
+    {
+      "id": 5,
+      "src": "media/film-clips/film-05.mp4",
+      "poster": "media/film-posters/film-05.webp",
+      "label": "Memory film 5 of 6"
+    },
+    {
+      "id": 6,
+      "src": "media/film-clips/film-06.mp4",
+      "poster": "media/film-posters/film-06.webp",
+      "label": "Memory film 6 of 6"
+    }
+  ],
+  "notes": [
+    "All 13 uploaded original photos are included.",
+    "All 6 uploaded videos are included as separate sequential film clips.",
+    "The childhood framed photo has been rotated upright.",
+    "background.mp3 is an original generated instrumental intended to loop."
+  ]
+}

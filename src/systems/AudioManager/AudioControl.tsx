@@ -1,5 +1,4 @@
-import { Volume2, VolumeX } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { giftConfig } from '../../config/giftConfig';
 import { listenForCinematicSounds, type CinematicSoundCue } from './soundEvents';
 
@@ -10,31 +9,81 @@ const cueSettings: Record<CinematicSoundCue, { frequency: number; endFrequency: 
   portal: { frequency: 74, endFrequency: 42, duration: 2.4, volume: 0.009, type: 'sine' },
 };
 
-export function AudioControl({ visible }: { visible: boolean }) {
-  const [enabled, setEnabled] = useState(false);
-  const [trackAvailable, setTrackAvailable] = useState<boolean | null>(null);
-  const [audio] = useState<HTMLAudioElement | null>(() => {
-    const track = giftConfig.backgroundTrack;
-    if (typeof Audio === 'undefined' || !track) return null;
-    const element = new Audio(track);
-    element.loop = true;
-    element.preload = 'none';
-    element.volume = 0.24;
-    return element;
-  });
-  const contextRef = useRef<AudioContext | null>(null);
-  const ambientRef = useRef<{ oscillator: OscillatorNode; gain: GainNode } | null>(null);
+const MUSIC_VOLUME = 0.31;
+const DUCKED_VOLUME = 0.065;
 
-  useEffect(() => () => {
-    audio?.pause();
-    ambientRef.current?.oscillator.stop();
-    void contextRef.current?.close();
-  }, [audio]);
+export function useExperienceAudio(ducked: boolean) {
+  const [activated, setActivated] = useState(false);
+  const activatedRef = useRef(false);
+  const contextRef = useRef<AudioContext | null>(null);
+  const fadeFrame = useRef<number | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    const element = new Audio(giftConfig.backgroundTrack);
+    element.loop = true;
+    element.preload = 'auto';
+    element.volume = 0;
+    audioRef.current = element;
+    return () => {
+      element.pause();
+      audioRef.current = null;
+    };
+  }, []);
+
+  const fadeTo = useCallback((target: number, duration = 720) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (fadeFrame.current !== null) cancelAnimationFrame(fadeFrame.current);
+    const startVolume = audio.volume;
+    const startedAt = window.performance.now();
+    const update = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      audio.volume = startVolume + (target - startVolume) * eased;
+      if (progress < 1) fadeFrame.current = requestAnimationFrame(update);
+      else fadeFrame.current = null;
+    };
+    fadeFrame.current = requestAnimationFrame(update);
+  }, []);
+
+  const activate = useCallback(async () => {
+    const audio = audioRef.current;
+    if (!audio) return false;
+    const context = contextRef.current ?? new AudioContext();
+    contextRef.current = context;
+    audio.volume = 0;
+
+    const playback = audio.play();
+    const resume = context.state === 'suspended' ? context.resume() : Promise.resolve();
+    const [playbackResult] = await Promise.allSettled([playback, resume]);
+    if (playbackResult.status === 'rejected') return false;
+
+    activatedRef.current = true;
+    setActivated(true);
+    fadeTo(MUSIC_VOLUME, 1800);
+    return true;
+  }, [fadeTo]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!activatedRef.current || !audio) return;
+    fadeTo(ducked ? DUCKED_VOLUME : MUSIC_VOLUME, ducked ? 520 : 980);
+  }, [ducked, fadeTo]);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      const audio = audioRef.current;
+      if (document.visibilityState !== 'visible' || !activatedRef.current || !audio?.paused) return;
+      void audio.play().then(() => fadeTo(ducked ? DUCKED_VOLUME : MUSIC_VOLUME, 600)).catch(() => undefined);
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [ducked, fadeTo]);
 
   useEffect(() => listenForCinematicSounds((cue) => {
-    if (!enabled) return;
-    const AudioContextClass = window.AudioContext;
-    const context = contextRef.current ?? new AudioContextClass();
+    if (!activated) return;
+    const context = contextRef.current ?? new AudioContext();
     contextRef.current = context;
     const settings = cueSettings[cue];
     const oscillator = context.createOscillator();
@@ -53,53 +102,13 @@ export function AudioControl({ visible }: { visible: boolean }) {
       oscillator.disconnect();
       gain.disconnect();
     };
-  }), [enabled]);
+  }), [activated]);
 
-  const stop = () => {
-    audio?.pause();
-    if (ambientRef.current) {
-      ambientRef.current.gain.gain.setTargetAtTime(0, contextRef.current?.currentTime ?? 0, 0.2);
-      window.setTimeout(() => ambientRef.current?.oscillator.stop(), 500);
-      ambientRef.current = null;
-    }
-    setEnabled(false);
-  };
+  useEffect(() => () => {
+    if (fadeFrame.current !== null) cancelAnimationFrame(fadeFrame.current);
+    audioRef.current?.pause();
+    void contextRef.current?.close();
+  }, []);
 
-  const startGeneratedAmbience = () => {
-    const AudioContextClass = window.AudioContext;
-    const context = contextRef.current ?? new AudioContextClass();
-    contextRef.current = context;
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.type = 'sine';
-    oscillator.frequency.value = 63;
-    gain.gain.value = 0.0001;
-    oscillator.connect(gain).connect(context.destination);
-    oscillator.start();
-    gain.gain.exponentialRampToValueAtTime(0.018, context.currentTime + 1.8);
-    ambientRef.current = { oscillator, gain };
-  };
-
-  const start = async () => {
-    if (audio && trackAvailable !== false) {
-      try {
-        await audio.play();
-        setTrackAvailable(true);
-        setEnabled(true);
-        return;
-      } catch {
-        setTrackAvailable(false);
-      }
-    }
-    startGeneratedAmbience();
-    setEnabled(true);
-  };
-
-  if (!visible) return null;
-  return (
-    <button className="sound-control" onClick={() => enabled ? stop() : void start()} aria-label={enabled ? 'Mute ambience' : 'Play ambience'}>
-      {enabled ? <Volume2 size={13} strokeWidth={1.5} /> : <VolumeX size={13} strokeWidth={1.5} />}
-      <span>{enabled ? 'Sound on' : 'Sound off'}</span>
-    </button>
-  );
+  return { activated, activate };
 }

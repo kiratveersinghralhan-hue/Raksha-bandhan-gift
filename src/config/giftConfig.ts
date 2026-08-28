@@ -1,3 +1,4 @@
+import { filmClips, backgroundMusic } from '../data/filmClips';
 import { publicAssetUrl } from '../utils/publicAssetUrl';
 
 export const giftConfig = {
@@ -9,7 +10,7 @@ export const giftConfig = {
   from: 'India',
   to: 'Canada',
   distance: '11,000+ KM',
-  backgroundTrack: null as string | null,
-  film: publicAssetUrl('media/sister-film.mp4') as string | null,
-  filmPoster: publicAssetUrl('media/memories/sibling-celebration.webp') as string | null,
+  backgroundTrack: backgroundMusic,
+  film: filmClips[0]?.src ?? publicAssetUrl('media/sister-film.mp4'),
+  filmPoster: filmClips[0]?.poster ?? publicAssetUrl('media/memories/sibling-celebration.webp'),
 } as const;

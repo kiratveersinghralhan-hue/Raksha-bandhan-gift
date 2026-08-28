@@ -9,7 +9,7 @@ export const giftConfig = {
   from: 'India',
   to: 'Canada',
   distance: '11,000+ KM',
-  backgroundTrack: publicAssetUrl('media/music/background.mp3'),
-  film: publicAssetUrl('media/sister-film.mp4'),
-  filmPoster: publicAssetUrl('media/sister-film-poster.webp'),
+  backgroundTrack: null as string | null,
+  film: publicAssetUrl('media/sister-film.mp4') as string | null,
+  filmPoster: publicAssetUrl('media/memories/sibling-celebration.webp') as string | null,
 } as const;

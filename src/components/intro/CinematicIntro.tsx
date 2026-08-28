@@ -112,10 +112,10 @@ export function CinematicIntro({
   }
 
   return (
-    <section className="gift-invitation chapter-overlay" aria-live="polite">
+    <section className={`gift-invitation chapter-overlay ${transitioning ? 'gift-invitation--opening' : ''}`} aria-live="polite">
       <div>
-        <p>I couldn’t wrap this one.</p>
-        <p>So I built it instead.</p>
+        <p className="gift-invitation__line gift-invitation__line--first">I couldn’t wrap this one.</p>
+        <p className="gift-invitation__line gift-invitation__line--second">So I built it instead.</p>
         <CinematicButton onClick={onOpen} disabled={transitioning}>Open</CinematicButton>
       </div>
     </section>

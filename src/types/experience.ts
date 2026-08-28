@@ -9,4 +9,16 @@ export interface ActiveTransition {
   phase: TransitionPhase;
 }
 
+export interface GiftMotionState {
+  reveal: number;
+  response: number;
+  ribbon: number;
+  lidLift: number;
+  lidOpen: number;
+  interiorLight: number;
+  particleReaction: number;
+  portal: number;
+  crossing: number;
+}
+
 export type QualityLevel = 'low' | 'medium' | 'high';

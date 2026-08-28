@@ -1,12 +1,15 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
+import type { MutableRefObject } from 'react';
 import * as THREE from 'three';
-import type { Chapter, QualityLevel, TransitionPhase } from '../../types/experience';
+import type { Chapter, GiftMotionState, QualityLevel, TransitionPhase } from '../../types/experience';
 
 const vertexShader = /* glsl */ `
   uniform float uTime;
   uniform float uPixelRatio;
   uniform float uBridge;
+  uniform float uGiftReaction;
+  uniform float uCrossing;
   uniform vec2 uPointer;
 
   attribute float aSize;
@@ -27,6 +30,15 @@ const vertexShader = /* glsl */ `
     particle.z += sin(time * 0.47 + position.x * 0.19) * aDrift.z;
     particle.xy += uPointer * (0.012 + aParallax * 0.045);
 
+    vec3 giftVector = particle - vec3(0.18, -0.08, 0.0);
+    float giftDistance = length(giftVector);
+    float giftInfluence = 1.0 - smoothstep(0.55, 4.8, giftDistance);
+    vec3 giftDirection = normalize(giftVector + vec3(0.0001));
+    float turbulence = sin(aPhase * 1.7 + uTime * (0.38 + aSpeed)) * 0.5 + 0.5;
+    particle += giftDirection * uGiftReaction * giftInfluence * (0.035 + aParallax * 0.16) * (turbulence - 0.34);
+    particle.y += uGiftReaction * giftInfluence * (0.025 + aParallax * 0.09) * sin(aPhase + uTime * 0.42);
+    particle.z += uCrossing * (0.24 + aParallax * 1.18) * (0.45 + turbulence * 0.55);
+
     vec2 direction = normalize(particle.xy + vec2(0.0001));
     particle.xy += direction * uBridge * (0.05 + aParallax * 0.12) * sin(aPhase + uTime * 0.35);
     particle.z -= uBridge * (0.06 + aParallax * 0.09);
@@ -45,6 +57,8 @@ const vertexShader = /* glsl */ `
 const fragmentShader = /* glsl */ `
   uniform vec3 uColor;
   uniform float uOpacity;
+  uniform float uGiftReveal;
+  uniform float uGiftReaction;
 
   varying float vBrightness;
   varying float vEdgeFade;
@@ -54,7 +68,8 @@ const fragmentShader = /* glsl */ `
     float softness = pow(1.0 - smoothstep(0.04, 0.5, radius), 1.7);
     float core = 1.0 - smoothstep(0.0, 0.16, radius);
     vec3 color = uColor * (0.54 + vBrightness * 0.74 + core * 0.18);
-    float alpha = softness * uOpacity * (0.52 + vBrightness * 0.4) * vEdgeFade;
+    float giftDensity = 1.0 + uGiftReveal * 0.14 + uGiftReaction * 0.18;
+    float alpha = softness * uOpacity * (0.52 + vBrightness * 0.4) * vEdgeFade * giftDensity;
     if (alpha < 0.002) discard;
     gl_FragColor = vec4(color, alpha);
   }
@@ -129,6 +144,8 @@ interface ParticleLayerProps {
   driftScale: number;
   reducedMotion: boolean;
   transitionPhase: TransitionPhase | null;
+  giftMotion: MutableRefObject<GiftMotionState>;
+  giftActive: boolean;
 }
 
 function ParticleLayer({
@@ -143,6 +160,8 @@ function ParticleLayer({
   driftScale,
   reducedMotion,
   transitionPhase,
+  giftMotion,
+  giftActive,
 }: ParticleLayerProps) {
   const { gl, pointer } = useThree();
   const materialRef = useRef<THREE.ShaderMaterial>(null);
@@ -158,9 +177,12 @@ function ParticleLayer({
     uTime: { value: 0 },
     uPixelRatio: { value: 1 },
     uBridge: { value: 0 },
+    uGiftReaction: { value: 0 },
+    uCrossing: { value: 0 },
     uPointer: { value: new THREE.Vector2() },
     uColor: { value: new THREE.Color(color) },
     uOpacity: { value: opacity },
+    uGiftReveal: { value: 0 },
   }), [color, opacity]);
 
   useFrame((_, rawDelta) => {
@@ -178,6 +200,9 @@ function ParticleLayer({
     material.uniforms.uTime.value = elapsed.current;
     material.uniforms.uPixelRatio.value = Math.min(gl.getPixelRatio(), 1.75);
     material.uniforms.uBridge.value = bridge.current;
+    material.uniforms.uGiftReveal.value = giftActive ? giftMotion.current.reveal : 0;
+    material.uniforms.uGiftReaction.value = giftActive ? reducedMotion ? giftMotion.current.particleReaction * 0.42 : giftMotion.current.particleReaction : 0;
+    material.uniforms.uCrossing.value = giftActive ? reducedMotion ? giftMotion.current.crossing * 0.24 : giftMotion.current.crossing : 0;
     material.uniforms.uPointer.value.copy(pointerCurrent.current);
     material.uniforms.uColor.value.lerp(targetColor, 1 - Math.exp(-0.65 * delta));
   });
@@ -232,18 +257,20 @@ interface CinematicAtmosphereProps {
   quality: QualityLevel;
   reducedMotion: boolean;
   transitionPhase: TransitionPhase | null;
+  giftMotion: MutableRefObject<GiftMotionState>;
+  giftActive: boolean;
 }
 
-export function CinematicAtmosphere({ chapter, quality, reducedMotion, transitionPhase }: CinematicAtmosphereProps) {
+export function CinematicAtmosphere({ chapter, quality, reducedMotion, transitionPhase, giftMotion, giftActive }: CinematicAtmosphereProps) {
   const counts = quality === 'high' ? [118, 82, 24] : quality === 'medium' ? [72, 48, 14] : [38, 22, 6];
   const colors = atmospherePalette[chapter];
 
   return (
     <>
       <fog attach="fog" args={['#070605', 5.4, 13.5]} />
-      <ParticleLayer count={counts[0]} seed={731} color={colors[0]} opacity={0.22} spread={farSpread} zOffset={-2.4} sizeRange={farSizeRange} speedRange={farSpeedRange} driftScale={0.12} reducedMotion={reducedMotion} transitionPhase={transitionPhase} />
-      <ParticleLayer count={counts[1]} seed={1931} color={colors[1]} opacity={0.28} spread={middleSpread} zOffset={0} sizeRange={middleSizeRange} speedRange={middleSpeedRange} driftScale={0.16} reducedMotion={reducedMotion} transitionPhase={transitionPhase} />
-      <ParticleLayer count={counts[2]} seed={4201} color={colors[2]} opacity={0.16} spread={nearSpread} zOffset={2.1} sizeRange={nearSizeRange} speedRange={nearSpeedRange} driftScale={0.2} reducedMotion={reducedMotion} transitionPhase={transitionPhase} />
+      <ParticleLayer count={counts[0]} seed={731} color={colors[0]} opacity={0.22} spread={farSpread} zOffset={-2.4} sizeRange={farSizeRange} speedRange={farSpeedRange} driftScale={0.12} reducedMotion={reducedMotion} transitionPhase={transitionPhase} giftMotion={giftMotion} giftActive={giftActive} />
+      <ParticleLayer count={counts[1]} seed={1931} color={colors[1]} opacity={0.28} spread={middleSpread} zOffset={0} sizeRange={middleSizeRange} speedRange={middleSpeedRange} driftScale={0.16} reducedMotion={reducedMotion} transitionPhase={transitionPhase} giftMotion={giftMotion} giftActive={giftActive} />
+      <ParticleLayer count={counts[2]} seed={4201} color={colors[2]} opacity={0.16} spread={nearSpread} zOffset={2.1} sizeRange={nearSizeRange} speedRange={nearSpeedRange} driftScale={0.2} reducedMotion={reducedMotion} transitionPhase={transitionPhase} giftMotion={giftMotion} giftActive={giftActive} />
     </>
   );
 }

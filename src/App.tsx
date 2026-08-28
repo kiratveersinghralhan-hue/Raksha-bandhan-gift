@@ -9,6 +9,7 @@ import { memories } from './data/memories';
 import { messages } from './data/messages';
 import { useReducedMotion } from './hooks/useReducedMotion';
 import { AudioControl } from './systems/AudioManager/AudioControl';
+import { useGiftOpeningSequence } from './systems/GiftSequence/useGiftOpeningSequence';
 import { useQuality } from './systems/QualityManager/useQuality';
 import { useCinematicTransition } from './systems/TransitionManager/useCinematicTransition';
 import type { Chapter } from './types/experience';
@@ -27,10 +28,10 @@ const humorLines = [
   `You’re welcome, ${giftConfig.sisterNickname}. 😂`,
 ];
 const globeLines = [
-  { overline: 'India → Canada', lead: giftConfig.distance, body: '' },
+  { overline: 'India → Canada', lead: giftConfig.distance, body: 'One luminous line across the world.' },
   { overline: giftConfig.distance, lead: 'Apparently, that’s not far enough to get rid of you.', body: '' },
-  { overline: '', lead: 'Good.', body: '' },
-  { overline: '', lead: 'Distance changed where you live.', body: 'It never changed where you belong.' },
+  { overline: '', lead: 'Distance changed where you live.', body: '' },
+  { overline: '', lead: 'It never changed where you belong.', body: '' },
 ];
 
 function MemoryOverlay({ active, onSelect, onContinue }: { active: number | null; onSelect: (index: number | null) => void; onContinue: () => void }) {
@@ -68,8 +69,6 @@ function GlobeOverlay({ beat, onAdvance }: { beat: number; onAdvance: () => void
   const line = globeLines[beat];
   return (
     <section className="chapter-overlay globe-overlay">
-      <div className="globe-label globe-label--india"><i />India</div>
-      <div className="globe-label globe-label--canada"><i />Canada</div>
       <article className="distance-copy" key={beat}>
         {line.overline && <p className="eyebrow">{line.overline}</p>}
         <h2>{line.lead}</h2>
@@ -84,7 +83,7 @@ function GlobeOverlay({ beat, onAdvance }: { beat: number; onAdvance: () => void
 function EnvelopeOverlay({ selected, onClose, onContinue }: { selected: string | null; onClose: () => void; onContinue: () => void }) {
   const message = messages.find((item) => item.id === selected);
   return (
-    <section className="chapter-overlay envelope-overlay">
+    <section className={`chapter-overlay envelope-overlay ${message ? 'envelope-overlay--open' : ''}`}>
       <div className={`chapter-heading ${message ? 'chapter-heading--quiet' : ''}`}>
         <p className="eyebrow">A few things to keep</p>
         <h2 className="chapter-title">Open when…</h2>
@@ -99,14 +98,20 @@ function EnvelopeOverlay({ selected, onClose, onContinue }: { selected: string |
           <span className="letter__signature">Your brother</span>
         </article>
       )}
-      <div className="chapter-continue"><CinematicButton subtle onClick={onContinue}>One small confession</CinematicButton></div>
+      {!message && <div className="chapter-continue"><CinematicButton subtle onClick={onContinue}>One small confession</CinematicButton></div>}
     </section>
   );
 }
 
 function HumorOverlay({ beat, onAdvance }: { beat: number; onAdvance: () => void }) {
   return (
-    <section className="chapter-overlay humor-overlay">
+    <section className={`chapter-overlay humor-overlay ${beat === humorLines.length - 1 ? 'humor-overlay--evidence' : ''}`}>
+      {beat === humorLines.length - 1 && (
+        <div className="humor-evidence" aria-label="Photographic evidence from the family archive">
+          <figure className="humor-evidence__photo humor-evidence__photo--back"><img src={publicAssetUrl('media/playful/motti-devil-dinner.webp')} alt="A playful family photo with a devil-horns filter" /></figure>
+          <figure className="humor-evidence__photo humor-evidence__photo--front"><img src={publicAssetUrl('media/playful/motti-glasses.webp')} alt="A funny glasses-filter portrait of Motti" /><figcaption>Exhibit M</figcaption></figure>
+        </div>
+      )}
       <p className={`humor-line ${beat === 4 ? 'humor-line--big' : ''}`} key={beat}>{humorLines[beat]}</p>
       <CinematicButton subtle onClick={onAdvance}>{beat === humorLines.length - 1 ? 'See the film' : 'Continue'}</CinematicButton>
     </section>
@@ -127,7 +132,7 @@ function VideoOverlay({ status, onFinish }: { status: FilmStatus; onFinish: () =
       <div className="film-surface">
         {status === 'checking' && <div className="film-placeholder"><span className="loader-ring" /><p>Preparing the screen</p></div>}
         {status === 'ready' && (
-          <video ref={videoRef} src={giftConfig.film} poster={giftConfig.filmPoster} preload="metadata" controls playsInline onEnded={onFinish} aria-label="Personal film for my sister" />
+          <video ref={videoRef} src={giftConfig.film ?? undefined} poster={giftConfig.filmPoster ?? undefined} preload="metadata" controls playsInline onEnded={onFinish} aria-label="Personal film for my sister" />
         )}
         {status === 'missing' && (
           <div className="film-placeholder">
@@ -153,13 +158,15 @@ function FinalOverlay({ beat, surprise, onAdvance, onSurprise, onCloseSurprise }
   const copy = [
     <><span>No matter how far you go…</span></>,
     <><span>you will always have</span><strong>a home here.</strong></>,
-    <><small>{giftConfig.greeting}</small><strong>{giftConfig.sisterName}</strong></>,
-    <><span>From {giftConfig.from}, with love.</span><em>Your brother, {giftConfig.brotherName} ❤️</em></>,
+    <><strong>{giftConfig.greeting.toUpperCase()}</strong></>,
+    <><strong>{giftConfig.sisterName}</strong></>,
+    <><span>From {giftConfig.from}, with love.</span></>,
+    <><span>Your brother,</span><em>{giftConfig.brotherName} ❤️</em></>,
   ][beat];
   return (
     <section className="chapter-overlay final-overlay">
       <div className="final-copy" key={beat}>{copy}</div>
-      {beat < 3 ? <button className="tap-advance" onClick={onAdvance}>Continue</button> : <CinematicButton onClick={onSurprise}>One last thing</CinematicButton>}
+      {beat < 5 ? <button className="tap-advance" onClick={onAdvance}>Continue</button> : <CinematicButton onClick={onSurprise}>One last thing</CinematicButton>}
       {surprise && (
         <article className="final-letter">
           <button className="icon-button final-letter__close" onClick={onCloseSurprise} aria-label="Close final message"><X size={17} /></button>
@@ -188,7 +195,6 @@ export default function App() {
   const [interactive, setInteractive] = useState(false);
   const [entered, setEntered] = useState(false);
   const [giftReady, setGiftReady] = useState(false);
-  const [giftOpen, setGiftOpen] = useState(false);
   const [chapter, setChapter] = useState<Chapter>('gift');
   const [activeMemory, setActiveMemory] = useState<number | null>(null);
   const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
@@ -196,13 +202,11 @@ export default function App() {
   const [humorBeat, setHumorBeat] = useState(0);
   const [finalBeat, setFinalBeat] = useState(0);
   const [surprise, setSurprise] = useState(false);
-  const [filmStatus, setFilmStatus] = useState<FilmStatus>('checking');
+  const [filmStatus, setFilmStatus] = useState<FilmStatus>(giftConfig.film ? 'checking' : 'missing');
   const { quality, cycle } = useQuality();
   const reducedMotion = useReducedMotion();
   const touchY = useRef<number | null>(null);
   const scrollLock = useRef(false);
-  const giftOpening = useRef(false);
-  const giftCall = useRef<gsap.core.Tween | null>(null);
 
   const applyChapter = useCallback((next: Chapter) => {
     setChapter(next);
@@ -233,6 +237,16 @@ export default function App() {
     prepare: prepareChapter,
   });
 
+  const enterMemoryThreshold = useCallback(() => {
+    changeChapter('memories', 'portal');
+  }, [changeChapter]);
+
+  const { motion: giftMotion, opening: giftOpening, start: startGiftOpening } = useGiftOpeningSequence({
+    entered,
+    reducedMotion,
+    onPortal: enterMemoryThreshold,
+  });
+
   useEffect(() => {
     const frame = requestAnimationFrame(() => setInteractive(true));
     return () => cancelAnimationFrame(frame);
@@ -246,20 +260,9 @@ export default function App() {
   }, [entered, reducedMotion]);
 
   const openGift = useCallback(() => {
-    if (giftOpening.current || transitioning) return;
-    giftOpening.current = true;
-    setGiftOpen(true);
-    giftCall.current = gsap.delayedCall(reducedMotion ? 0.08 : 1.65, () => {
-      changeChapter('memories', 'portal');
-      giftOpening.current = false;
-      giftCall.current = null;
-    });
-  }, [changeChapter, reducedMotion, transitioning]);
-
-  useEffect(() => () => {
-    giftCall.current?.kill();
-    giftCall.current = null;
-  }, []);
+    if (transitioning) return;
+    startGiftOpening();
+  }, [startGiftOpening, transitioning]);
 
   useEffect(() => {
     if (chapter !== 'globe' || globeBeat >= globeLines.length - 1) return;
@@ -269,6 +272,7 @@ export default function App() {
 
   useEffect(() => {
     if (chapter !== 'video') return;
+    if (!giftConfig.film) return;
     let alive = true;
     fetch(giftConfig.film, { method: 'HEAD' })
       .then((response) => {
@@ -312,19 +316,19 @@ export default function App() {
   };
 
   const currentOverlay = (() => {
-    if (chapter === 'gift') return <CinematicIntro entered={entered} giftReady={giftReady} interactive={interactive} reducedMotion={reducedMotion} transitioning={transitioning} onEnter={() => setEntered(true)} onOpen={openGift} />;
+    if (chapter === 'gift') return <CinematicIntro entered={entered} giftReady={giftReady} interactive={interactive} reducedMotion={reducedMotion} transitioning={transitioning || giftOpening} onEnter={() => setEntered(true)} onOpen={openGift} />;
     if (chapter === 'memories') return <MemoryOverlay active={activeMemory} onSelect={setActiveMemory} onContinue={() => changeChapter('globe', 'dissolve')} />;
     if (chapter === 'globe') return <GlobeOverlay beat={globeBeat} onAdvance={advanceGlobe} />;
     if (chapter === 'envelopes') return <EnvelopeOverlay selected={selectedMessage} onClose={() => setSelectedMessage(null)} onContinue={() => changeChapter('humor', 'blackout')} />;
     if (chapter === 'humor') return <HumorOverlay beat={humorBeat} onAdvance={advanceHumor} />;
     if (chapter === 'video') return <VideoOverlay status={filmStatus} onFinish={() => changeChapter('final', 'blackout')} />;
-    return <FinalOverlay beat={finalBeat} surprise={surprise} onAdvance={() => setFinalBeat((beat) => Math.min(3, beat + 1))} onSurprise={() => setSurprise(true)} onCloseSurprise={() => setSurprise(false)} />;
+    return <FinalOverlay beat={finalBeat} surprise={surprise} onAdvance={() => setFinalBeat((beat) => Math.min(5, beat + 1))} onSurprise={() => setSurprise(true)} onCloseSurprise={() => setSurprise(false)} />;
   })();
 
   return (
     <main className={`experience-shell chapter-${chapter} ${transitioning ? 'is-transitioning' : ''}`} data-quality={quality} onWheel={onWheel} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <Suspense fallback={<div className="webgl-fallback"><div className="fallback-orbit" /><div className="fallback-glow" /></div>}>
-        <World chapter={chapter} giftOpen={giftOpen} activeMemory={activeMemory} selectedMessage={selectedMessage} quality={quality} reducedMotion={reducedMotion} outgoingChapter={outgoingChapter} transition={transition} onMemorySelect={setActiveMemory} onMessageSelect={setSelectedMessage} />
+        <World chapter={chapter} giftMotion={giftMotion} activeMemory={activeMemory} selectedMessage={selectedMessage} quality={quality} reducedMotion={reducedMotion} outgoingChapter={outgoingChapter} transition={transition} onMemorySelect={setActiveMemory} onMessageSelect={setSelectedMessage} />
       </Suspense>
       <div className="atmospheric-wash" aria-hidden="true" />
       <div className={`grain ${entered ? 'grain--awake' : ''}`} aria-hidden="true" />

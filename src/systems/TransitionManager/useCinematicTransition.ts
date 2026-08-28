@@ -37,7 +37,7 @@ export function useCinematicTransition({ chapter, reducedMotion, onSwitch, prepa
 
     const timing = reducedMotion
       ? { exit: 0.01, bridge: 0.03, switch: 0.05, enter: 0.07, settle: 0.09, complete: 0.13 }
-      : { exit: 0.16, bridge: 0.58, switch: 0.84, enter: 0.98, settle: 1.66, complete: 2.24 };
+      : { exit: 0.2, bridge: 0.7, switch: 1.02, enter: 1.16, settle: 1.92, complete: 2.56 };
 
     const timeline = gsap.timeline();
     timelineRef.current = timeline;

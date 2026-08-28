@@ -1,7 +1,8 @@
 import { useFrame } from '@react-three/fiber';
 import { useRef } from 'react';
+import type { MutableRefObject } from 'react';
 import * as THREE from 'three';
-import type { Chapter, QualityLevel, TransitionPhase } from '../../types/experience';
+import type { Chapter, GiftMotionState, QualityLevel, TransitionPhase } from '../../types/experience';
 
 interface LightingRoute {
   ambient: number;
@@ -28,9 +29,10 @@ interface CinematicLightingProps {
   quality: QualityLevel;
   reducedMotion: boolean;
   transitionPhase: TransitionPhase | null;
+  giftMotion: MutableRefObject<GiftMotionState>;
 }
 
-export function CinematicLighting({ chapter, quality, reducedMotion, transitionPhase }: CinematicLightingProps) {
+export function CinematicLighting({ chapter, quality, reducedMotion, transitionPhase, giftMotion }: CinematicLightingProps) {
   const ambientRef = useRef<THREE.AmbientLight>(null);
   const hemisphereRef = useRef<THREE.HemisphereLight>(null);
   const keyRef = useRef<THREE.SpotLight>(null);
@@ -45,15 +47,17 @@ export function CinematicLighting({ chapter, quality, reducedMotion, transitionP
     const qualityScale = quality === 'high' ? 1 : quality === 'medium' ? 0.94 : 0.84;
     const bridgeBoost = transitionPhase === 'bridge' ? 1.16 : transitionPhase === 'exit' || transitionPhase === 'enter' ? 1.06 : 1;
     const damping = reducedMotion ? 9 : 1.75;
+    const giftReveal = chapter === 'gift' ? 0.06 + giftMotion.current.reveal * 0.94 : 1;
+    const giftCrossingFade = chapter === 'gift' ? 1 - giftMotion.current.crossing * 0.56 : 1;
 
     if (ambientRef.current) {
-      ambientRef.current.intensity = THREE.MathUtils.damp(ambientRef.current.intensity, route.ambient * qualityScale, damping, delta);
+      ambientRef.current.intensity = THREE.MathUtils.damp(ambientRef.current.intensity, route.ambient * qualityScale * (chapter === 'gift' ? 0.42 + giftReveal * 0.58 : 1), damping, delta);
     }
     if (hemisphereRef.current) {
-      hemisphereRef.current.intensity = THREE.MathUtils.damp(hemisphereRef.current.intensity, route.hemisphere * qualityScale, damping, delta);
+      hemisphereRef.current.intensity = THREE.MathUtils.damp(hemisphereRef.current.intensity, route.hemisphere * qualityScale * (chapter === 'gift' ? 0.36 + giftReveal * 0.64 : 1), damping, delta);
     }
     if (keyRef.current) {
-      keyRef.current.intensity = THREE.MathUtils.damp(keyRef.current.intensity, route.key * qualityScale * bridgeBoost, damping, delta);
+      keyRef.current.intensity = THREE.MathUtils.damp(keyRef.current.intensity, route.key * qualityScale * bridgeBoost * giftReveal * giftCrossingFade, damping, delta);
       keyRef.current.color.lerp(route.keyColor, 1 - Math.exp(-1.1 * delta));
       if (!reducedMotion) {
         keyRef.current.position.x = 3.1 + Math.sin(elapsed.current * 0.13) * 0.07;
@@ -61,12 +65,12 @@ export function CinematicLighting({ chapter, quality, reducedMotion, transitionP
       }
     }
     if (rimRef.current) {
-      rimRef.current.intensity = THREE.MathUtils.damp(rimRef.current.intensity, route.rim * qualityScale, damping, delta);
+      rimRef.current.intensity = THREE.MathUtils.damp(rimRef.current.intensity, route.rim * qualityScale * (chapter === 'gift' ? 0.18 + giftReveal * 0.82 : 1) * giftCrossingFade, damping, delta);
       rimRef.current.color.lerp(route.rimColor, 1 - Math.exp(-0.9 * delta));
     }
     if (distantRef.current) {
       const breathing = reducedMotion ? 0 : Math.sin(elapsed.current * 0.17) * 0.22;
-      distantRef.current.intensity = THREE.MathUtils.damp(distantRef.current.intensity, (route.distant + breathing) * qualityScale, damping, delta);
+      distantRef.current.intensity = THREE.MathUtils.damp(distantRef.current.intensity, (route.distant + breathing) * qualityScale * (chapter === 'gift' ? 0.28 + giftReveal * 0.72 : 1), damping, delta);
     }
   });
 

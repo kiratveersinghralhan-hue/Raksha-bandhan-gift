@@ -2,8 +2,8 @@ import { giftConfig } from '../config/giftConfig';
 
 export const finalMessage = {
   eyebrow: 'One last thing',
-  title: 'A small space, kept just for you.',
-  body: 'Replace this with the private message, family photograph, or final memory you want her to discover.',
+  title: 'This will always be home.',
+  body: 'Harsamreet, no matter how far life takes you, one thing will always stay the same — this is your home, these are your people, and you will always be loved here. And yes, Motti… I expect full credit for making your gift in 3D.',
   signature: `Your brother, ${giftConfig.brotherName} ❤️`,
   image: '',
 };

@@ -1,5 +1,3 @@
-'use client';
-
 import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber';
 import { Float, Html, Line, RoundedBox, Sparkles } from '@react-three/drei';
 import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
@@ -8,6 +6,7 @@ import * as THREE from 'three';
 import { memories } from '../../data/memories';
 import { messages } from '../../data/messages';
 import type { Chapter, QualityLevel } from '../../types/experience';
+import { publicAssetUrl } from '../../utils/publicAssetUrl';
 
 interface WorldProps {
   chapter: Chapter;
@@ -117,7 +116,7 @@ function PhotoSurface({ image, dimmed }: { image: string; dimmed: boolean }) {
     if (!image) return;
     let alive = true;
     const loaded = new THREE.TextureLoader().load(
-      image,
+      publicAssetUrl(image),
       (result) => { if (alive) { result.colorSpace = THREE.SRGBColorSpace; setTexture(result); } },
       undefined,
       () => { if (alive) setTexture(null); },

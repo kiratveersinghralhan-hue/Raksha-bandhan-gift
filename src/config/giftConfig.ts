@@ -1,3 +1,5 @@
+import { publicAssetUrl } from '../utils/publicAssetUrl';
+
 export const giftConfig = {
   sisterName: 'SISTER_NAME',
   brotherName: 'BROTHER_NAME',
@@ -6,7 +8,7 @@ export const giftConfig = {
   from: 'India',
   to: 'Canada',
   distance: '11,000+ KM',
-  backgroundTrack: 'media/music/background.mp3',
-  film: 'media/sister-film.mp4',
-  filmPoster: 'media/sister-film-poster.webp',
+  backgroundTrack: publicAssetUrl('media/music/background.mp3'),
+  film: publicAssetUrl('media/sister-film.mp4'),
+  filmPoster: publicAssetUrl('media/sister-film-poster.webp'),
 } as const;

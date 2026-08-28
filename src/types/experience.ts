@@ -2,4 +2,11 @@ export type Chapter = 'gift' | 'memories' | 'globe' | 'envelopes' | 'humor' | 'v
 
 export type TransitionKind = 'portal' | 'dissolve' | 'blackout' | 'light';
 
+export type TransitionPhase = 'prepare' | 'exit' | 'bridge' | 'enter' | 'settle';
+
+export interface ActiveTransition {
+  kind: TransitionKind;
+  phase: TransitionPhase;
+}
+
 export type QualityLevel = 'low' | 'medium' | 'high';

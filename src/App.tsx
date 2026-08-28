@@ -1,6 +1,8 @@
 import { ChevronLeft, ChevronRight, Maximize2, Pause, Play, RotateCw, X } from 'lucide-react';
 import { gsap } from 'gsap';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { CinematicIntro } from './components/intro/CinematicIntro';
+import { CinematicButton } from './components/ui/CinematicButton';
 import { giftConfig } from './config/giftConfig';
 import { finalMessage } from './data/finalMessage';
 import { memories } from './data/memories';
@@ -8,7 +10,9 @@ import { messages } from './data/messages';
 import { useReducedMotion } from './hooks/useReducedMotion';
 import { AudioControl } from './systems/AudioManager/AudioControl';
 import { useQuality } from './systems/QualityManager/useQuality';
-import type { Chapter, TransitionKind } from './types/experience';
+import { useCinematicTransition } from './systems/TransitionManager/useCinematicTransition';
+import type { Chapter } from './types/experience';
+import { publicAssetUrl } from './utils/publicAssetUrl';
 
 const World = lazy(() => import('./components/three/World').then((module) => ({ default: module.World })));
 
@@ -20,7 +24,7 @@ const humorLines = [
   'Then I checked my bank account.',
   'So…',
   'I built you one.',
-  'You’re welcome. 😂',
+  `You’re welcome, ${giftConfig.sisterNickname}. 😂`,
 ];
 const globeLines = [
   { overline: 'India → Canada', lead: giftConfig.distance, body: '' },
@@ -28,43 +32,6 @@ const globeLines = [
   { overline: '', lead: 'Good.', body: '' },
   { overline: '', lead: 'Distance changed where you live.', body: 'It never changed where you belong.' },
 ];
-
-function CinematicButton({ children, onClick, subtle = false, disabled = false }: { children: React.ReactNode; onClick?: () => void; subtle?: boolean; disabled?: boolean }) {
-  return <button className={`cinematic-button ${subtle ? 'cinematic-button--subtle' : ''}`} onClick={onClick} disabled={disabled}>{children}</button>;
-}
-
-function Intro({ entered, giftReady, interactive, onEnter, onOpen }: { entered: boolean; giftReady: boolean; interactive: boolean; onEnter: () => void; onOpen: () => void }) {
-  if (!entered) {
-    return (
-      <section className="threshold" aria-label="Begin the experience">
-        <p className="eyebrow threshold__eyebrow">A Raksha Bandhan gift</p>
-        <h1 className="display threshold__title">For my sister.</h1>
-        <p className="threshold__hint">Best experienced with a quiet moment.</p>
-        <CinematicButton onClick={onEnter} disabled={!interactive}>Enter the void</CinematicButton>
-      </section>
-    );
-  }
-  if (!giftReady) {
-    return (
-      <section className="opening-copy" aria-live="polite">
-        <div className="opening-copy__intro">
-          <p className="eyebrow">From {giftConfig.from}, for you in {giftConfig.to}</p>
-          <h1 className="display">A little piece<br />of home.</h1>
-          <p className="occasion">{giftConfig.greeting}</p>
-        </div>
-      </section>
-    );
-  }
-  return (
-    <section className="gift-invitation chapter-overlay" aria-live="polite">
-      <div>
-        <p>I couldn’t wrap this one.</p>
-        <p>So I built it instead.</p>
-        <CinematicButton onClick={onOpen}>Open</CinematicButton>
-      </div>
-    </section>
-  );
-}
 
 function MemoryOverlay({ active, onSelect, onContinue }: { active: number | null; onSelect: (index: number | null) => void; onContinue: () => void }) {
   const memory = active === null ? null : memories[active];
@@ -187,7 +154,7 @@ function FinalOverlay({ beat, surprise, onAdvance, onSurprise, onCloseSurprise }
     <><span>No matter how far you go…</span></>,
     <><span>you will always have</span><strong>a home here.</strong></>,
     <><small>{giftConfig.greeting}</small><strong>{giftConfig.sisterName}</strong></>,
-    <><span>From {giftConfig.from}, with love.</span><em>Your brother ❤️</em></>,
+    <><span>From {giftConfig.from}, with love.</span><em>Your brother, {giftConfig.brotherName} ❤️</em></>,
   ][beat];
   return (
     <section className="chapter-overlay final-overlay">
@@ -223,7 +190,6 @@ export default function App() {
   const [giftReady, setGiftReady] = useState(false);
   const [giftOpen, setGiftOpen] = useState(false);
   const [chapter, setChapter] = useState<Chapter>('gift');
-  const [transition, setTransition] = useState<TransitionKind | null>(null);
   const [activeMemory, setActiveMemory] = useState<number | null>(null);
   const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
   const [globeBeat, setGlobeBeat] = useState(0);
@@ -235,6 +201,37 @@ export default function App() {
   const reducedMotion = useReducedMotion();
   const touchY = useRef<number | null>(null);
   const scrollLock = useRef(false);
+  const giftOpening = useRef(false);
+  const giftCall = useRef<gsap.core.Tween | null>(null);
+
+  const applyChapter = useCallback((next: Chapter) => {
+    setChapter(next);
+    setActiveMemory(null);
+    setSelectedMessage(null);
+    if (next === 'globe') setGlobeBeat(0);
+    if (next === 'humor') setHumorBeat(0);
+    if (next === 'final') {
+      setFinalBeat(0);
+      setSurprise(false);
+    }
+  }, []);
+
+  const prepareChapter = useCallback((next: Chapter) => {
+    if (next !== 'memories') return;
+    memories.forEach((memory) => {
+      if (!memory.image) return;
+      const image = new Image();
+      image.decoding = 'async';
+      image.src = publicAssetUrl(memory.image);
+    });
+  }, []);
+
+  const { begin: changeChapter, outgoingChapter, transition, transitioning } = useCinematicTransition({
+    chapter,
+    reducedMotion,
+    onSwitch: applyChapter,
+    prepare: prepareChapter,
+  });
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => setInteractive(true));
@@ -243,28 +240,26 @@ export default function App() {
 
   useEffect(() => {
     if (!entered) return;
-    const delay = reducedMotion ? 120 : 4300;
+    const delay = reducedMotion ? 120 : 3700;
     const reveal = gsap.delayedCall(delay / 1000, () => setGiftReady(true));
     return () => { reveal.kill(); };
   }, [entered, reducedMotion]);
 
-  const changeChapter = useCallback((next: Chapter, kind: TransitionKind) => {
-    setTransition(kind);
-    gsap.delayedCall((reducedMotion ? 20 : 680) / 1000, () => {
-      setChapter(next);
-      setActiveMemory(null);
-      setSelectedMessage(null);
-      if (next === 'globe') setGlobeBeat(0);
-      if (next === 'humor') setHumorBeat(0);
-      if (next === 'final') setFinalBeat(0);
-    });
-    gsap.delayedCall((reducedMotion ? 80 : 1450) / 1000, () => setTransition(null));
-  }, [reducedMotion]);
-
-  const openGift = () => {
+  const openGift = useCallback(() => {
+    if (giftOpening.current || transitioning) return;
+    giftOpening.current = true;
     setGiftOpen(true);
-    gsap.delayedCall((reducedMotion ? 60 : 1550) / 1000, () => changeChapter('memories', 'portal'));
-  };
+    giftCall.current = gsap.delayedCall(reducedMotion ? 0.08 : 1.65, () => {
+      changeChapter('memories', 'portal');
+      giftOpening.current = false;
+      giftCall.current = null;
+    });
+  }, [changeChapter, reducedMotion, transitioning]);
+
+  useEffect(() => () => {
+    giftCall.current?.kill();
+    giftCall.current = null;
+  }, []);
 
   useEffect(() => {
     if (chapter !== 'globe' || globeBeat >= globeLines.length - 1) return;
@@ -292,7 +287,7 @@ export default function App() {
   }, []);
 
   const onWheel = (event: React.WheelEvent) => {
-    if (chapter !== 'memories' || Math.abs(event.deltaY) < 35 || scrollLock.current) return;
+    if (transitioning || chapter !== 'memories' || Math.abs(event.deltaY) < 35 || scrollLock.current) return;
     scrollLock.current = true;
     moveMemory(event.deltaY > 0 ? 1 : -1);
     window.setTimeout(() => { scrollLock.current = false; }, 650);
@@ -300,7 +295,7 @@ export default function App() {
 
   const onTouchStart = (event: React.TouchEvent) => { touchY.current = event.touches[0]?.clientY ?? null; };
   const onTouchEnd = (event: React.TouchEvent) => {
-    if (chapter !== 'memories' || touchY.current === null) return;
+    if (transitioning || chapter !== 'memories' || touchY.current === null) return;
     const end = event.changedTouches[0]?.clientY ?? touchY.current;
     const distance = touchY.current - end;
     if (Math.abs(distance) > 54) moveMemory(distance > 0 ? 1 : -1);
@@ -317,7 +312,7 @@ export default function App() {
   };
 
   const currentOverlay = (() => {
-    if (chapter === 'gift') return <Intro entered={entered} giftReady={giftReady} interactive={interactive} onEnter={() => setEntered(true)} onOpen={openGift} />;
+    if (chapter === 'gift') return <CinematicIntro entered={entered} giftReady={giftReady} interactive={interactive} reducedMotion={reducedMotion} transitioning={transitioning} onEnter={() => setEntered(true)} onOpen={openGift} />;
     if (chapter === 'memories') return <MemoryOverlay active={activeMemory} onSelect={setActiveMemory} onContinue={() => changeChapter('globe', 'dissolve')} />;
     if (chapter === 'globe') return <GlobeOverlay beat={globeBeat} onAdvance={advanceGlobe} />;
     if (chapter === 'envelopes') return <EnvelopeOverlay selected={selectedMessage} onClose={() => setSelectedMessage(null)} onContinue={() => changeChapter('humor', 'blackout')} />;
@@ -327,10 +322,11 @@ export default function App() {
   })();
 
   return (
-    <main className={`experience-shell chapter-${chapter}`} onWheel={onWheel} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+    <main className={`experience-shell chapter-${chapter} ${transitioning ? 'is-transitioning' : ''}`} data-quality={quality} onWheel={onWheel} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <Suspense fallback={<div className="webgl-fallback"><div className="fallback-orbit" /><div className="fallback-glow" /></div>}>
-        <World chapter={chapter} giftOpen={giftOpen} activeMemory={activeMemory} selectedMessage={selectedMessage} quality={quality} reducedMotion={reducedMotion} onMemorySelect={setActiveMemory} onMessageSelect={setSelectedMessage} />
+        <World chapter={chapter} giftOpen={giftOpen} activeMemory={activeMemory} selectedMessage={selectedMessage} quality={quality} reducedMotion={reducedMotion} outgoingChapter={outgoingChapter} transition={transition} onMemorySelect={setActiveMemory} onMessageSelect={setSelectedMessage} />
       </Suspense>
+      <div className="atmospheric-wash" aria-hidden="true" />
       <div className={`grain ${entered ? 'grain--awake' : ''}`} aria-hidden="true" />
       {currentOverlay}
       {entered && <>
@@ -338,7 +334,7 @@ export default function App() {
         <AudioControl visible />
         <button className="quality-control" onClick={cycle} aria-label={`Rendering quality: ${quality}. Change quality.`}>Quality · {quality}</button>
       </>}
-      <div className={`scene-transition scene-transition--${transition ?? 'idle'}`} aria-hidden="true"><i /><i /><i /></div>
+      <div className={`scene-transition scene-transition--${transition?.kind ?? 'idle'} scene-transition--phase-${transition?.phase ?? 'idle'}`} aria-hidden="true"><i /><i /><i /></div>
       <p className="rotate-device">Rotate your device back to portrait for the full experience.</p>
     </main>
   );

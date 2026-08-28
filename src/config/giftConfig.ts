@@ -1,8 +1,9 @@
 import { publicAssetUrl } from '../utils/publicAssetUrl';
 
 export const giftConfig = {
-  sisterName: 'SISTER_NAME',
-  brotherName: 'BROTHER_NAME',
+  sisterName: 'Harsamreet',
+  sisterNickname: 'Motti',
+  brotherName: 'Kiratveer Singh Ralhan',
   occasion: 'Raksha Bandhan',
   greeting: 'Happy Raksha Bandhan',
   from: 'India',
